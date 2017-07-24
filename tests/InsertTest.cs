@@ -214,7 +214,7 @@ namespace SQLite.Tests
 			var testObjects = Enumerable.Range(1, 20).Select(i => new UniqueObj { Id = i }).ToList();
 			testObjects[testObjects.Count - 1].Id = 1; // causes the insert to fail because of duplicate key
 
-			ExceptionAssert.Throws<SQLiteException>(() => _db.InsertAll(testObjects));
+			ExceptionAssert.Throws<PrimaryKeyConstraintViolationException>(() => _db.InsertAll(testObjects));
 
 			Assert.AreEqual(0, _db.Table<UniqueObj>().Count());
 		}
@@ -237,7 +237,7 @@ namespace SQLite.Tests
 			var testObjects = Enumerable.Range(1, 20).Select(i => new UniqueObj { Id = i }).ToList();
 			testObjects[testObjects.Count - 1].Id = 1; // causes the insert to fail because of duplicate key
 
-			ExceptionAssert.Throws<SQLiteException>(() => _db.RunInTransaction(() => {
+			ExceptionAssert.Throws<PrimaryKeyConstraintViolationException>(() => _db.RunInTransaction(() => {
 				_db.InsertAll(testObjects);
 			}));
 

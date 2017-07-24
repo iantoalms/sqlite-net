@@ -116,6 +116,32 @@ namespace SQLite
 		}
 	}
 
+	public class UniqueConstraintViolationException : SQLiteException
+	{
+		protected UniqueConstraintViolationException (SQLite3.Result r, string message)
+			: base (r, message)
+		{
+		}
+
+		public static new UniqueConstraintViolationException New (SQLite3.Result r, string message)
+		{
+			return new UniqueConstraintViolationException (r, message);
+		}
+	}
+
+	public class PrimaryKeyConstraintViolationException : SQLiteException
+	{
+		protected PrimaryKeyConstraintViolationException (SQLite3.Result r, string message)
+			: base (r, message)
+		{
+		}
+
+		public static new PrimaryKeyConstraintViolationException New (SQLite3.Result r, string message)
+		{
+			return new PrimaryKeyConstraintViolationException (r, message);
+		}
+	}
+
 	[Flags]
 	public enum SQLiteOpenFlags {
 		ReadOnly = 1, ReadWrite = 2, Create = 4,
@@ -2233,10 +2259,17 @@ namespace SQLite
 			} else if (r == SQLite3.Result.Error) {
 				string msg = SQLite3.GetErrmsg (_conn.Handle);
 				throw SQLiteException.New (r, msg);
-			}
-			else if (r == SQLite3.Result.Constraint) {
-				if (SQLite3.ExtendedErrCode (_conn.Handle) == SQLite3.ExtendedResult.ConstraintNotNull) {
-					throw NotNullConstraintViolationException.New (r, SQLite3.GetErrmsg (_conn.Handle));
+			} else if (r == SQLite3.Result.Constraint) {
+				switch (SQLite3.ExtendedErrCode (_conn.Handle))
+				{
+					case SQLite3.ExtendedResult.ConstraintNotNull:
+						throw NotNullConstraintViolationException.New (r, SQLite3.GetErrmsg (_conn.Handle));
+					case SQLite3.ExtendedResult.ConstraintUnique:
+						throw UniqueConstraintViolationException.New (r, SQLite3.GetErrmsg (_conn.Handle));
+					case SQLite3.ExtendedResult.ConstraintPrimaryKey:
+						throw PrimaryKeyConstraintViolationException.New (r, SQLite3.GetErrmsg (_conn.Handle));
+					default:
+						throw SQLiteException.New (r, SQLite3.GetErrmsg (_conn.Handle));
 				}
 			}
 
@@ -2572,9 +2605,19 @@ namespace SQLite
 				string msg = SQLite3.GetErrmsg (Connection.Handle);
 				SQLite3.Reset (Statement);
 				throw SQLiteException.New (r, msg);
-			} else if (r == SQLite3.Result.Constraint && SQLite3.ExtendedErrCode (Connection.Handle) == SQLite3.ExtendedResult.ConstraintNotNull) {
+			} else if (r == SQLite3.Result.Constraint) {
 				SQLite3.Reset (Statement);
-				throw NotNullConstraintViolationException.New (r, SQLite3.GetErrmsg (Connection.Handle));
+				switch (SQLite3.ExtendedErrCode (Connection.Handle))
+				{
+					case SQLite3.ExtendedResult.ConstraintNotNull:
+						throw NotNullConstraintViolationException.New (r, SQLite3.GetErrmsg (Connection.Handle));
+					case SQLite3.ExtendedResult.ConstraintUnique:
+						throw UniqueConstraintViolationException.New (r, SQLite3.GetErrmsg (Connection.Handle));
+					case SQLite3.ExtendedResult.ConstraintPrimaryKey:
+						throw PrimaryKeyConstraintViolationException.New (r, SQLite3.GetErrmsg (Connection.Handle));
+					default:
+						throw SQLiteException.New (r, SQLite3.GetErrmsg (Connection.Handle));
+				}
 			} else {
 				SQLite3.Reset (Statement);
 				throw SQLiteException.New (r, r.ToString ());
